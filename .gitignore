@@ -1,0 +1,18 @@
+# Arduino build output
+build/
+**/build/
+
+# Local editor and operating-system files
+.vscode/
+.idea/
+*.user
+Thumbs.db
+.DS_Store
+
+# Generated debug artifacts
+*.elf
+*.map
+*.o
+*.d
+*.a
+
