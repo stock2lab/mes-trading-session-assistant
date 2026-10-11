@@ -2,22 +2,6 @@
 
 Waveshare ESP32-S3-Touch-LCD-4.3C-BOX-CN 的交易日历与可靠性正式版本。
 
-## 界面预览
-
-> 以下图片为根据 v0.5.0 功能与布局制作的界面模拟图，用于说明操作结构，并非开发板实拍截图。
-
-### Trading Session 首页
-
-![Trading Session 首页模拟图](docs/images/trading-session-home-mockup.png)
-
-用于显示周期与 K 线序号、当前 K 线倒计时、纽约/本地时间、交易次数和当日累计 R。
-
-### Trade Journal 交易记录页
-
-![Trade Journal 交易记录页模拟图](docs/images/trade-journal-mockup.png)
-
-用于快速记录 Long/Short 方向和最终 R 结果，并执行每日 5 笔与 -2R 停止规则。
-
 ## 版本信息
 
 - 版本：`v0.5.0`
