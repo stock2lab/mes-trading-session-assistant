@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07100e">
+  <meta name="description" content="MES 交易纪律副屏：交易时段、K线倒计时、持仓计时和本地交易日志。">
+  <title>MES Companion</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="brand" id="brandButton" type="button" aria-label="返回主屏">
+        <span class="brand-mark"><i></i><i></i><i></i></span>
+        <span><b>MES</b><small>COMPANION</small></span>
+      </button>
+      <div class="session-pill" id="sessionPill"><span></span><b>正在校准</b></div>
+      <div class="header-actions">
+        <button class="icon-button" id="soundButton" type="button" aria-label="切换声音" title="声音提醒">
+          <span id="soundIcon">♪</span>
+        </button>
+        <button class="icon-button" id="fullscreenButton" type="button" aria-label="全屏" title="全屏">↗</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="view active" id="dashboardView" data-view="dashboard">
+        <div class="dashboard-grid">
+          <article class="hero-card card">
+            <div class="card-kicker-row">
+              <div>
+                <p class="eyebrow">BAR COUNTDOWN</p>
+                <div class="bar-meta"><b id="intervalLabel">5 MIN</b><span>BAR</span><strong id="barNumber">—</strong></div>
+              </div>
+              <div class="segmented" id="intervalPicker" aria-label="K线周期">
+                <button data-interval="1">1</button><button data-interval="3">3</button><button class="active" data-interval="5">5</button><button data-interval="15">15</button>
+              </div>
+            </div>
+            <div class="countdown" id="countdown">05:00</div>
+            <div class="progress-track"><div id="barProgress"></div></div>
+            <div class="hero-foot">
+              <span id="countdownHint">等待纽约交易窗口</span>
+              <span id="marketDate">—</span>
+            </div>
+          </article>
+
+          <article class="clock-card card">
+            <div class="clock-block">
+              <p class="eyebrow">MARKET TIME</p>
+              <div class="zone-row"><span>NEW YORK</span><b id="nyZone">ET</b></div>
+              <time id="nyTime">--:--:--</time>
+            </div>
+            <div class="hairline"></div>
+            <div class="clock-block local">
+              <p class="eyebrow">LOCAL TIME</p>
+              <div class="zone-row"><span id="localZone">LOCAL</span><b id="localOffset">UTC</b></div>
+              <time id="localTime">--:--:--</time>
+            </div>
+          </article>
+
+          <article class="discipline-card card" id="disciplineCard">
+            <div class="discipline-icon">!</div>
+            <div><p class="eyebrow">SESSION STATUS</p><h2 id="disciplineTitle">正在检查交易时段</h2><p id="disciplineDetail">所有判断仅用于纪律提醒</p></div>
+            <div class="next-marker"><span>NEXT</span><b id="nextMarker">—</b></div>
+          </article>
+
+          <article class="position-card card" id="positionCard">
+            <div class="position-head"><p class="eyebrow">OPEN POSITION</p><button class="text-button" id="openJournalButton" type="button">管理交易 →</button></div>
+            <div class="position-empty" id="positionEmpty">
+              <div><strong>当前没有持仓</strong><span id="entryAvailability">检查交易窗口中</span></div>
+              <div class="quick-actions"><button class="trade long" data-open-side="LONG">LONG</button><button class="trade short" data-open-side="SHORT">SHORT</button></div>
+            </div>
+            <div class="position-live hidden" id="positionLive">
+              <div><span class="side-badge" id="positionSide">LONG</span><strong id="positionDuration">00:00</strong><small id="positionOpenedAt">—</small></div>
+              <button class="primary-button" id="closePositionButton" type="button">记录结果</button>
+            </div>
+          </article>
+
+          <article class="stats-card card">
+            <div class="stat"><span>今日交易</span><strong><i id="tradeCount">0</i> / 5</strong></div>
+            <div class="stat"><span>今日结果</span><strong id="totalR">0.0R</strong></div>
+            <div class="stat"><span>连续亏损</span><strong id="lossStreak">0</strong></div>
+            <div class="stat"><span>冷静期</span><strong id="cooldown">READY</strong></div>
+          </article>
+
+          <article class="calendar-card card">
+            <div><p class="eyebrow">MARKET CALENDAR</p><h3 id="calendarHeadline">下一交易日信息</h3><p id="calendarDetail">正在加载日历</p></div>
+            <span class="calendar-date" id="calendarDate">—</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="focusView" data-view="focus">
+        <div class="focus-screen" id="focusScreen">
+          <div class="focus-top"><span id="focusSession">SESSION</span><span id="focusNyTime">--:--:-- ET</span></div>
+          <div class="focus-center">
+            <p><span id="focusInterval">5 MIN</span> · BAR <b id="focusBar">—</b></p>
+            <strong id="focusCountdown">05:00</strong>
+            <div class="focus-progress"><i id="focusProgress"></i></div>
+            <h2 id="focusMessage">正在校准</h2>
+          </div>
+          <div class="focus-position" id="focusPosition">NO OPEN POSITION</div>
+          <button class="focus-exit" id="focusExit" type="button">退出极简模式</button>
+        </div>
+      </section>
+
+      <section class="view" id="journalView" data-view="journal">
+        <div class="page-heading"><div><p class="eyebrow">TRADING JOURNAL</p><h1>今日交易</h1><p id="journalDate">—</p></div><button class="secondary-button" id="exportButton" type="button">导出数据</button></div>
+        <div class="journal-layout">
+          <article class="trade-console card">
+            <div id="journalNoPosition">
+              <p class="eyebrow">NEW TRADE</p><h2>记录一笔交易</h2><p class="muted" id="journalAvailability">确认交易时间和纪律状态后，手动记录方向。</p>
+              <div class="large-trade-actions"><button class="trade long" data-open-side="LONG"><small>记录开仓</small>LONG</button><button class="trade short" data-open-side="SHORT"><small>记录开仓</small>SHORT</button></div>
+            </div>
+            <div class="hidden" id="journalOpenPosition">
+              <p class="eyebrow">POSITION IN PROGRESS</p><div class="open-summary"><span class="side-badge" id="journalSide">LONG</span><strong id="journalDuration">00:00</strong></div>
+              <p class="muted" id="journalOpenedAt">—</p>
+              <h3>选择平仓结果</h3>
+              <div class="result-grid" id="resultGrid">
+                <button data-result="-2">-1R</button><button data-result="-1">-0.5R</button><button data-result="0">0R</button><button data-result="1">+0.5R</button><button data-result="2">+1R</button><button data-result="4">+2R</button>
+              </div>
+              <div class="custom-result"><button id="customMinus">−</button><strong id="customResult">+2.5R</strong><button id="customPlus">＋</button><button class="primary-button" id="customConfirm">确认自定义结果</button></div>
+              <button class="danger-link" id="cancelPositionButton" type="button">取消这笔未完成交易</button>
+            </div>
+          </article>
+
+          <article class="history-card card">
+            <div class="history-head"><div><p class="eyebrow">TODAY</p><h2>交易记录</h2></div><button class="text-button" id="undoButton" type="button">撤销上一笔</button></div>
+            <div class="history-list" id="historyList"></div>
+            <div class="daily-total"><span>DAILY TOTAL</span><strong id="historyTotal">0.0R</strong></div>
+          </article>
+
+          <article class="rules-card card">
+            <p class="eyebrow">DISCIPLINE RULES</p>
+            <div class="rules-grid">
+              <div><b>5</b><span>每日最多交易</span></div><div><b>−2R</b><span>当日强制停止</span></div><div><b>5m</b><span>常规冷静期</span></div><div><b>15m</b><span>连续两次亏损</span></div>
+            </div>
+            <button class="danger-outline" id="resetDayButton" type="button">重置今天的数据</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="settingsView" data-view="settings">
+        <div class="page-heading"><div><p class="eyebrow">PREFERENCES</p><h1>设置</h1><p>设置只保存在当前浏览器</p></div></div>
+        <div class="settings-grid">
+          <article class="settings-card card">
+            <h2>提醒</h2>
+            <label class="setting-row"><span><b>声音提醒</b><small>K线结束及关键时段提示</small></span><input type="checkbox" id="soundToggle"><i></i></label>
+            <label class="setting-row"><span><b>持仓超时提醒</b><small>持仓超过设定时间后突出显示</small></span><input type="checkbox" id="positionAlertToggle"><i></i></label>
+            <label class="number-setting"><span><b>持仓提醒阈值</b><small>分钟</small></span><input type="number" id="positionAlertMinutes" min="5" max="180" step="5" value="30"></label>
+          </article>
+          <article class="settings-card card">
+            <h2>数据与隐私</h2>
+            <p class="muted">交易数据仅保存在当前设备，不会上传。清理浏览器数据会删除记录。</p>
+            <div class="settings-actions"><button class="secondary-button" id="exportSettingsButton">导出 JSON</button><label class="secondary-button file-button">导入 JSON<input type="file" id="importInput" accept="application/json"></label></div>
+          </article>
+          <article class="settings-card card about-card">
+            <h2>关于</h2><p>MES Companion Web <b>v0.1.0</b></p><p class="muted">只提供时间、记录和纪律提醒，不连接交易账户，不发送订单，也不提供交易信号。</p><p class="calendar-freshness">预置 2026–2027 节假日规则；CME 可能临近日期调整，使用前请以官方安排为准。</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="主导航">
+      <button class="active" data-nav="dashboard"><span>◫</span><b>总览</b></button>
+      <button data-nav="focus"><span>◎</span><b>极简</b></button>
+      <button data-nav="journal"><span>≡</span><b>交易</b></button>
+      <button data-nav="settings"><span>⌁</span><b>设置</b></button>
+    </nav>
+  </div>
+
+  <dialog id="lockDialog" class="modal">
+    <div class="modal-icon">!</div><p class="eyebrow">SESSION LOCKED</p><h2 id="lockTitle">当前不能开新交易</h2><p id="lockReason">—</p><div class="modal-actions"><button class="secondary-button" data-close-dialog>知道了</button><button class="hold-button hidden" id="overrideButton">按住 5 秒解锁一笔</button></div>
+  </dialog>
+
+  <dialog id="confirmDialog" class="modal confirm-modal">
+    <p class="eyebrow">PLEASE CONFIRM</p><h2 id="confirmTitle">确认操作</h2><p id="confirmText">—</p><div class="modal-actions"><button class="secondary-button" data-close-dialog>取消</button><button class="danger-button" id="confirmAction">确认</button></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
