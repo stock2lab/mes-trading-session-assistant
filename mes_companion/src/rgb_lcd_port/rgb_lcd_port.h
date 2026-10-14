@@ -34,7 +34,7 @@
  */
 #define EXAMPLE_LCD_H_RES               (800)  ///< Horizontal resolution in pixels
 #define EXAMPLE_LCD_V_RES               (480)  ///< Vertical resolution in pixels
-#define EXAMPLE_LCD_PIXEL_CLOCK_HZ      (16 * 1000 * 1000) ///< Pixel clock frequency in Hz
+#define EXAMPLE_LCD_PIXEL_CLOCK_HZ      (14 * 1000 * 1000) ///< Reduced clock margin for stable RGB DMA during Wi-Fi activity
 
 /**
  * @brief Color and Pixel Configuration

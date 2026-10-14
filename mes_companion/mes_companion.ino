@@ -11,7 +11,7 @@
 #include "src/market_calendar/market_calendar.h"
 
 namespace {
-constexpr const char *FIRMWARE_VERSION="v0.5.0";
+constexpr const char *FIRMWARE_VERSION="v0.6.0-test";
 constexpr const char *SETUP_AP_SSID="TradingSession-Setup";
 constexpr const char *SETUP_AP_PASS="tradeclock";
 constexpr uint32_t BG=0x0B1018,PANEL=0x151D2A,TEXT=0xF2F5F8,MUTED=0x8290A3;
@@ -21,6 +21,7 @@ uint8_t interval_index=2;
 lv_obj_t *countdown_label,*interval_label,*bar_number_label,*bar_closed_label,*beijing_label,*new_york_label,*new_york_zone_label,*session_label,*progress_bar;
 lv_obj_t *sound_label;
 lv_obj_t *timer_screen,*journal_screen,*journal_summary,*journal_status,*position_label,*journal_history;
+lv_obj_t *home_trades_button,*home_trades_label;
 lv_obj_t *reset_label,*undo_label,*long_button,*short_button,*cancel_button,*result_buttons[7];
 lv_obj_t *custom_panel,*custom_value_label;
 lv_obj_t *discipline_label,*session_lock_panel,*session_lock_title,*session_lock_reason,*override_button,*override_button_label;
@@ -166,7 +167,10 @@ void network_setup_hold(lv_event_t *e){
   if(code==LV_EVENT_PRESSED)network_hold_started=millis();
   else if(code==LV_EVENT_PRESSING&&network_hold_started&&millis()-network_hold_started>=5000){
     network_hold_started=0;
-    if(time_check_required&&pending_ntp_epoch>1700000000)write_rtc_from_network(pending_ntp_epoch,true);
+    if(time_check_required&&pending_ntp_epoch>1700000000){
+      time_t confirmed_epoch=time(nullptr);
+      write_rtc_from_network(confirmed_epoch>1700000000?confirmed_epoch:pending_ntp_epoch,true);
+    }
     else{portal_forced=true;start_setup_portal();}
   }else if(code==LV_EVENT_RELEASED||code==LV_EVENT_PRESS_LOST)network_hold_started=0;
 }
@@ -223,6 +227,18 @@ void refresh_journal(lv_timer_t *){
   if(undo_label&&undo_armed_until&&now>undo_armed_until){undo_armed_until=0;lv_label_set_text(undo_label,"UNDO");}
   int ny_day=new_york_day_key(now),ny_minutes=new_york_minutes(now);tm ny{};new_york_time(now,ny);
   if(trade.day!=ny_day){trade=TradeState{};trade.day=ny_day;after_hours_override=false;save_trade();}
+  if(home_trades_button&&home_trades_label){
+    if(trade.open){
+      uint32_t held=now>trade.entry?now-trade.entry:0;bool reminder=held>=1800;
+      lv_label_set_text_fmt(home_trades_label,"%s %02d:%02d",trade.side=='L'?"LONG":"SHORT",held/60,held%60);
+      lv_obj_set_style_bg_color(home_trades_button,lv_color_hex(reminder?WARN:ACCENT),LV_PART_MAIN);
+      lv_obj_set_style_text_color(home_trades_label,lv_color_hex(reminder?BG:TEXT),LV_PART_MAIN);
+    }else{
+      lv_label_set_text(home_trades_label,"TRADES");
+      lv_obj_set_style_bg_color(home_trades_button,lv_color_hex(ACCENT),LV_PART_MAIN);
+      lv_obj_set_style_text_color(home_trades_label,lv_color_hex(TEXT),LV_PART_MAIN);
+    }
+  }
   char r[16];snprintf(r,sizeof(r),"%+.1fR",trade.half_r/2.0f);
   lv_label_set_text_fmt(journal_summary,"TRADES  %d / 5\nTODAY   %s\nLOSSES  %d",trade.count,r,trade.losses);
   char history[240]="";
@@ -401,7 +417,7 @@ void show_journal(lv_event_t *){refresh_journal(nullptr);lv_scr_load(journal_scr
 void open_trade(lv_event_t *e){
   time_t now=current_epoch();if(trade.open||trading_locked(now))return;
   if(new_york_minutes(now)>=840)after_hours_override=false;
-  trade.open=true;trade.side=(char)(intptr_t)lv_event_get_user_data(e);trade.entry=now;save_trade();refresh_journal(nullptr);
+  trade.open=true;trade.side=(char)(intptr_t)lv_event_get_user_data(e);trade.entry=now;save_trade();refresh_journal(nullptr);lv_scr_load(timer_screen);
 }
 void record_result(int result){
   if(!trade.open)return;time_t now=current_epoch();
@@ -559,7 +575,8 @@ void create_ui(){
   discipline_label=lv_label_create(timer_screen);lv_label_set_text(discipline_label,"CHECKING SESSION");style(discipline_label,&lv_font_montserrat_16,MUTED);
   lv_obj_set_size(discipline_label,752,34);lv_obj_set_style_text_align(discipline_label,LV_TEXT_ALIGN_CENTER,LV_PART_MAIN);
   lv_obj_set_style_radius(discipline_label,8,LV_PART_MAIN);lv_obj_set_style_pad_top(discipline_label,7,LV_PART_MAIN);lv_obj_set_pos(discipline_label,24,374);
-  action_button(timer_screen,"TRADES",24,418,128,44,ACCENT,show_journal);
+  home_trades_button=action_button(timer_screen,"TRADES",24,418,128,44,ACCENT,show_journal);
+  home_trades_label=lv_obj_get_child(home_trades_button,0);
   network_status_label=lv_label_create(timer_screen);lv_label_set_text_fmt(network_status_label,"WIFI CONNECTING  |  RTC ACTIVE  |  %s",FIRMWARE_VERSION);
   style(network_status_label,&lv_font_montserrat_16,MUTED);lv_obj_align(network_status_label,LV_ALIGN_BOTTOM_MID,0,-30);
   lv_obj_add_flag(network_status_label,LV_OBJ_FLAG_CLICKABLE);lv_obj_add_event_cb(network_status_label,network_setup_hold,LV_EVENT_ALL,nullptr);
@@ -567,7 +584,7 @@ void create_ui(){
   lv_obj_set_style_bg_color(sound,lv_color_hex(PANEL),LV_PART_MAIN);lv_obj_set_style_radius(sound,10,LV_PART_MAIN);
   lv_obj_add_event_cb(sound,toggle_sound,LV_EVENT_CLICKED,nullptr);
   sound_label=lv_label_create(sound);lv_label_set_text(sound_label,sound_enabled?"SOUND ON":"SOUND OFF");style(sound_label,&lv_font_montserrat_16,sound_enabled?ACCENT:MUTED);lv_obj_center(sound_label);
-  update_clock(nullptr);lv_timer_create(update_clock,250,nullptr);
+  update_clock(nullptr);lv_timer_create(update_clock,1000,nullptr);
   create_journal_ui();
 }
 }
